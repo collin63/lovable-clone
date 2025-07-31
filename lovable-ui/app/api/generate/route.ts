@@ -48,9 +48,8 @@ export async function POST(req: NextRequest) {
           console.log(`[API] Message ${messageCount} - Type: ${message.type}`);
           
           // Log specific details based on message type
-          if (message.type === 'tool_use') {
-            console.log(`[API] Tool use: ${(message as any).name}`);
-          } else if (message.type === 'result') {
+          if ((message as any).type === 'tool_use') {
+            else if (message.type === 'result') {
             console.log(`[API] Result: ${(message as any).subtype}`);
           }
           
