@@ -4,27 +4,26 @@ import { query } from "@anthropic-ai/claude-code";
 export async function POST(req: NextRequest) {
   try {
     const { prompt } = await req.json();
-    
+
     if (!prompt) {
       return new Response(
         JSON.stringify({ error: "Prompt is required" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
-    
+
     console.log("[API] Starting code generation for prompt:", prompt);
-    
-    // Create a streaming response
+
     const encoder = new TextEncoder();
     const stream = new TransformStream();
     const writer = stream.writable.getWriter();
-    
-    // Start the async generation
+
+    // Async task: generate AI response
     (async () => {
       try {
         const abortController = new AbortController();
         let messageCount = 0;
-        
+
         for await (const message of query({
           prompt: prompt,
           abortController: abortController,
@@ -46,22 +45,21 @@ export async function POST(req: NextRequest) {
         })) {
           messageCount++;
           console.log(`[API] Message ${messageCount} - Type: ${message.type}`);
-          
-          // Log specific details based on message type
-          if ((message as any).type === 'tool_use') {
-            else if (message.type === 'result') {
+
+          // Handle specific message types
+          if ((message as any).type === "tool_use") {
+            console.log(`[API] Tool use: ${(message as any).name}`);
+          } else if (message.type === "result") {
             console.log(`[API] Result: ${(message as any).subtype}`);
           }
-          
-          // Send the message to the client
+
+          // Send message to client
           await writer.write(
             encoder.encode(`data: ${JSON.stringify(message)}\n\n`)
           );
         }
-        
+
         console.log(`[API] Generation complete. Total messages: ${messageCount}`);
-        
-        // Send completion signal
         await writer.write(encoder.encode("data: [DONE]\n\n"));
       } catch (error: any) {
         console.error("[API] Error during generation:", error);
@@ -72,7 +70,7 @@ export async function POST(req: NextRequest) {
         await writer.close();
       }
     })();
-    
+
     return new Response(stream.readable, {
       headers: {
         "Content-Type": "text/event-stream",
@@ -80,7 +78,7 @@ export async function POST(req: NextRequest) {
         "Connection": "keep-alive",
       },
     });
-    
+
   } catch (error: any) {
     console.error("[API] Error:", error);
     return new Response(
